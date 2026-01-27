@@ -1,0 +1,14 @@
+# Logs
+*.log
+
+# Editor swap/backup files
+*~
+*.swp
+*.swo
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Local overrides
+.env
