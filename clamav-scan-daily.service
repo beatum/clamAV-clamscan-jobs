@@ -1,33 +1,31 @@
-[Unit]
-Description=ClamAV Daily Focused Scan (clamscan)
-After=network-online.target clamav-freshclam.service
-Wants=clamav-freshclam.service
-
 [Service]
 Type=oneshot
-# Run as root to minimize "permission denied" errors.
-User=clamav
-Nice=10
-IOSchedulingClass=best-effort
-# Treat "virus found" (exit 1) as success so the unit doesn't go failed.
+User=root
+
+# Be gentle to other workloads
+Nice=15
+IOSchedulingClass=idle
+
+# Treat "virus found" (exit 1) as success
 SuccessExitStatus=0 1
-# Timeout so a stuck scan doesn’t run forever.
-RuntimeMaxSec=3h
-# Write scan report here; ensure directory exists and is writable
-ExecStart=/usr/bin/clamscan -r --infected \
+
+# Prevent runaway jobs
+RuntimeMaxSec=1h
+
+# Ensure log directory exists
+ExecStartPre=/usr/bin/install -o root -g root -m 750 -d /var/log/clamav
+
+# FAST scan: daemon-based, parallel directory scanning, FD passing for perms
+ExecStart=/usr/bin/clamdscan --fdpass --multiscan --infected \
   --log=/var/log/clamav/daily-scan.log \
-  --exclude-dir='^/proc' --exclude-dir='^/sys' --exclude-dir='^/run' --exclude-dir='^/dev' \
-  --max-filesize=200M --max-scansize=400M --max-recursion=16 \
   /home /var/www /opt
 
-# Reasonable hardening that still lets us read most of the system
+# Hardening (still allows scanning)
 NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectKernelLogs=yes
 ProtectKernelModules=yes
 ProtectControlGroups=yes
-ProtectHome=no
-ProtectSystem=no
 
 [Install]
 WantedBy=multi-user.target
