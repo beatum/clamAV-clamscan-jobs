@@ -1,40 +1,37 @@
 [Unit]
-Description=ClamAV Weekly Full System Scan (clamscan)
-After=network-online.target clamav-freshclam.service
-Wants=clamav-freshclam.service
+Description=ClamAV Weekly Full System Scan (FAST: clamdscan via clamd@scan)
+After=network-online.target clamav-freshclam.service clamd@scan.service
+Wants=clamav-freshclam.service clamd@scan.service
 
 [Service]
 Type=oneshot
-# Run as root for broad filesystem access and fewer permission errors.
-User=clamav
 
-# Do not mark the unit failed when malware is found (exit 1).
+# Full-system scan needs broad access; --fdpass makes this efficient.
+User=root
+
+# Do not mark unit failed when malware is found (exit 1).
 SuccessExitStatus=0 1
 
-# Keep scans from running forever; weekly full scans can be long.
+# Weekly scans can be long, but don't run forever.
 RuntimeMaxSec=12h
 
-# Be polite to the system.
-Nice=10
-IOSchedulingClass=best-effort
+# Be polite to the system (low priority + idle IO).
+Nice=15
+IOSchedulingClass=idle
 
-# Protect logs that may contain sensitive paths/filenames.
+# Protect logs that may contain sensitive paths.
 UMask=0077
 
-# Make sure log dir exists and definitions are current.
-ExecStartPre=/usr/bin/install -d -m 0755 /var/log/clamav
-ExecStartPre=/usr/bin/freshclam -q
+# Ensure log dir exists.
+ExecStartPre=/usr/bin/install -o root -g root -m 0750 -d /var/log/clamav
 
-# The scan itself. Use anchored regex for system dirs. Limit to a single filesystem if desired.
-ExecStart=/usr/bin/clamscan -r / \
-  --infected \
+# Use clamdscan (daemon-based): faster than clamscan. clamd is multi-threaded. [1](https://docs.clamav.net/manual/Usage/Scanning.html)
+# --multiscan: parallel directory scanning. [2](https://linux.die.net/man/1/clamdscan)
+# --fdpass: pass file descriptors; faster + helps permissions over local socket. [2](https://linux.die.net/man/1/clamdscan)[3](https://yiannis.site/articles/clamav.html)
+# --wait: wait briefly for clamd if it is starting up. [4](https://www.mankier.com/1/clamdscan)
+ExecStart=/usr/bin/clamdscan --wait --fdpass --multiscan --infected \
   --log=/var/log/clamav/weekly-full-scan.log \
-  --exclude-dir='^/proc' \
-  --exclude-dir='^/sys' \
-  --exclude-dir='^/run' \
-  --exclude-dir='^/dev' \
-  --exclude-dir='^/var/lib/flatpak' \
-  --cross-fs=no
+  /
 
 # Reasonable hardening that still allows read access to the whole FS.
 NoNewPrivileges=yes
