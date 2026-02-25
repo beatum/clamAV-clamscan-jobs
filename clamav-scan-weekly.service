@@ -9,11 +9,12 @@ Type=oneshot
 # Full-system scan needs broad access; --fdpass makes this efficient.
 User=root
 
-# Do not mark unit failed when malware is found (exit 1).
-SuccessExitStatus=0 1
+# Do not mark unit failed when malware is found (exit 1)
+# or when some files could not be scanned (exit 21).
+SuccessExitStatus=0 1 21
 
 # Weekly scans can be long, but don't run forever.
-RuntimeMaxSec=12h
+TimeoutStartSec=12h
 
 # Be polite to the system (low priority + idle IO).
 Nice=15
@@ -28,8 +29,13 @@ ExecStartPre=/usr/bin/install -o root -g root -m 0750 -d /var/log/clamav
 # Use clamdscan (daemon-based): faster than clamscan. clamd is multi-threaded. [1](https://docs.clamav.net/manual/Usage/Scanning.html)
 # --multiscan: parallel directory scanning. [2](https://linux.die.net/man/1/clamdscan)
 # --fdpass: pass file descriptors; faster + helps permissions over local socket. [2](https://linux.die.net/man/1/clamdscan)[3](https://yiannis.site/articles/clamav.html)
-# --wait: wait briefly for clamd if it is starting up. [4](https://www.mankier.com/1/clamdscan)
+# --wait: wait for clamd if it is starting up. [4](https://www.mankier.com/1/clamdscan)
 ExecStart=/usr/bin/clamdscan --wait --fdpass --multiscan --infected \
+  --exclude=^/proc \
+  --exclude=^/sys \
+  --exclude=^/dev \
+  --exclude=^/run \
+  --exclude=^/var/lib/flatpak \
   --log=/var/log/clamav/weekly-full-scan.log \
   /
 

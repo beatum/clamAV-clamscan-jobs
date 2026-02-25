@@ -33,6 +33,18 @@ Copy the unit files into systemd and enable the timers:
 - Daily scan: `/var/log/clamav/daily-scan.log`
 - Weekly scan: `/var/log/clamav/weekly-full-scan.log`
 
+## Test
+
+Run a manual scan and check status/logs:
+
+- `sudo systemctl start clamd@scan.service`
+- `sudo systemctl start clamav-scan-daily.service`
+- `sudo systemctl status clamav-scan-daily.service`
+- `sudo systemctl start clamav-scan-weekly.service`
+- `sudo systemctl status clamav-scan-weekly.service`
+- `sudo tail -n 50 /var/log/clamav/daily-scan.log`
+- `sudo tail -n 50 /var/log/clamav/weekly-full-scan.log`
+`
 ## Notes
 
 - The daily scan targets `/home`, `/var/www`, and `/opt`.
